@@ -33,11 +33,14 @@ jobs:
             "name": "vulnerable-project",
             "version": "1.0.0",
             "dependencies": {
-              "lodash": "4.17.10"  # Known vulnerability in this version
+              "lodash": "4.17.10"  
             }
           }' > package.json
+
+          # Create the output directory
+          mkdir -p $(pwd)/dependency-check-report
           
-          # Run dependency-check
+           # Run dependency-check
           docker run --rm \
             -v "$(pwd):/src" \
             owasp/dependency-check \
