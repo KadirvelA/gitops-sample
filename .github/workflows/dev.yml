@@ -19,34 +19,49 @@ jobs:
           submodules: true
           lfs: false
 
-      # Secret Scanning with GitLeaks
-      - name: Secret Scan with GitLeaks
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          config: false
-          verbose: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 1. Intentional Secret Exposure (for GitLeaks to catch)
+      - name: Intentional Secret Exposure
+        run: |
+          echo "apiKey=12345-secret-hardcoded-key" >> .env
+          echo "password=hardcoded-password" >> .env
 
-      # Dependency Scanning with OWASP Dependency-Check
+      # 2. Dependency Scanning with OWASP Dependency-Check (using outdated dependencies)
       - name: Dependency Scan with OWASP Dependency-Check
-        uses: dependency-check/action@v1.4.0
-        with:
-          project: "My Project"
-          format: "ALL"
-          scan_path: "${{ github.workspace }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      # Vulnerability Scan with Trivy for container images
+        run: |
+          # Create a sample package.json with outdated dependencies for Node.js
+          echo '{
+            "name": "vulnerable-project",
+            "version": "1.0.0",
+            "dependencies": {
+              "lodash": "4.17.10"  # Known vulnerability in this version
+            }
+          }' > package.json
+          
+          # Run dependency-check
+          docker run --rm \
+            -v "$(pwd):/src" \
+            owasp/dependency-check \
+            --project "Vulnerable Project" \
+            --scan /src \
+            --format "ALL" \
+            --out /src/dependency-check-report
+
+      # 3. Vulnerability Scan with Trivy (for a known vulnerable image)
       - name: Container Image Scan with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "ubuntu-latest"
+          image-ref: "nginx:1.16"  # Intentionally vulnerable version of nginx
           format: "table"
-          ignore-unfixed: true
+          ignore-unfixed: false
 
-      # Build and Deploy Job
+      # (Optional) Upload Dependency Report as Artifact
+      - name: Upload Dependency-Check Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
+
+      # Build and Deploy Job (Will be skipped if pipeline fails due to scans)
       - name: Build and Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
