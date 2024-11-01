@@ -40,7 +40,7 @@ jobs:
       
       # Vulnerability Scan with Trivy for container images
       - name: Container Image Scan with Trivy
-        uses: aquasecurity/trivy-action@v0.5.1
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: "ubuntu-latest"
           format: "table"
